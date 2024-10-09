@@ -103,13 +103,32 @@ def analyser_et_annoter_image(image_path, detector):
         st.write(f"Aucune image extraite pour le chemin : {image_path}")
         return {}
 
+    # Lire l'image
     image = cv2.imread(image_path)
     if image is None:
         st.write(f"Impossible de lire l'image : {image_path}")
         return {}
 
+    # Analyse des émotions
     resultats = detector.detect_emotions(image)
+
     if resultats:
+        # Annoter l'image avec un carré vert et les scores d'émotions
+        for result in resultats:
+            # Dessiner un carré vert autour du visage détecté
+            (x, y, w, h) = result["box"]
+            cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+            # Ajouter le score de chaque émotion en dessous du carré vert
+            emotions = result['emotions']
+            for idx, (emotion, score) in enumerate(emotions.items()):
+                text = f"{emotion}: {score:.4f}"
+                # Positionner le texte en dessous du rectangle
+                cv2.putText(image, text, (x, y + h + 20 + (idx * 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+
+        # Sauvegarder l'image annotée
+        cv2.imwrite(image_path, image)
+
         return resultats[0]['emotions']
     else:
         st.write(f"Aucune émotion détectée dans l'image {image_path}")

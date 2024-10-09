@@ -14,12 +14,39 @@ from fer import FER
 import cv2
 from yt_dlp import YoutubeDL
 
-# Fonction pour créer le répertoire de travail
+
+# Fonction pour définir le répertoire de travail
+import streamlit as st
+import os
+
+# Fonction pour définir le répertoire de travail
 def definir_repertoire_travail():
+    # Récupérer le chemin spécifié par l'utilisateur
     repertoire = st.text_input("Définir le répertoire de travail", "", key="repertoire_travail")
-    if repertoire and not os.path.exists(repertoire):
+
+    # Vérifier si l'utilisateur a bien spécifié un chemin
+    if not repertoire:
+        st.write("Veuillez spécifier un chemin valide.")
+        return ""
+
+    # Nettoyer le chemin spécifié (éliminer les espaces superflus)
+    repertoire = repertoire.strip()
+
+    # Si le chemin n'est pas absolu, le transformer en chemin absolu
+    repertoire = os.path.abspath(repertoire)
+
+    # Vérifier si le répertoire existe déjà
+    if not os.path.exists(repertoire):
+        # Si non, créer le répertoire
         os.makedirs(repertoire)
+        st.write(f"Le répertoire a été créé : {repertoire}")
+    else:
+        st.write(f"Le répertoire existe déjà : {repertoire}")
+
+    # Retourner le chemin absolu
     return repertoire
+
+
 
 # Fonction pour télécharger la vidéo avec yt-dlp
 def telecharger_video(url, repertoire):
@@ -234,9 +261,11 @@ def analyser_video(video_url, start_time, end_time, repertoire_travail):
     st.write("Analyse terminée, résultats exportés dans un fichier Excel.")
 
 # Interface Streamlit
-st.title("Analyse des émotions : 1 fps et 25 fps")
+st.title("Analyse des émotions : 1 fps vs 25 fps vs somme - moyenne - mode")
 st.markdown("<h6 style='text-align: center;'>www.codeandcortex.fr</h5>", unsafe_allow_html=True)
 
+# Utilisation dans Streamlit
+st.subheader("Définir le répertoire de travail")
 repertoire_travail = definir_repertoire_travail()
 
 video_url = st.text_input("URL de la vidéo à analyser", "", key="video_url")

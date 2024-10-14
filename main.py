@@ -6,6 +6,7 @@
 # pip install vl-convert-python
 # FFmpeg -> attention sous Mac la procédure d'installation sous MAC nécessite "Homebrew"
 
+
 import streamlit as st
 import subprocess
 import os
@@ -16,6 +17,7 @@ from fer import FER
 import cv2
 from yt_dlp import YoutubeDL
 import altair as alt
+from collections import defaultdict
 
 # Fonction pour vider le cache
 def vider_cache():
@@ -144,15 +146,24 @@ def emotion_dominante_par_somme(emotions_list):
 # Calcul de l'émotion dominante par mode (émotion la plus fréquente)
 def emotion_dominante_par_mode(emotions_list):
     if emotions_list:
-        emotions_dominantes = [
-            max(emotion, key=emotion.get) for emotion in emotions_list if emotion  # Vérification si 'emotion' n'est pas vide
-        ]
-        if emotions_dominantes:  # Vérifier qu'il y a des émotions dominantes avant d'essayer de trouver le mode
-            emotion_dominante = Counter(emotions_dominantes).most_common(1)[0][0]
-            return Counter(emotions_dominantes), emotion_dominante
-        else:
-            return {}, "Aucune émotion dominante détectée"
-    return {}, "Aucune émotion"
+        # Liste des émotions à traiter
+        emotions = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
+
+        # Initialiser le compteur avec toutes les émotions pour qu'elles apparaissent même avec fréquence 0
+        emotions_dominantes = Counter({emotion: 0 for emotion in emotions})
+
+        for emotion_dict in emotions_list:
+            # Vérifier que le dictionnaire d'émotions n'est pas vide
+            if emotion_dict:
+                # Pour chaque frame, trouver l'émotion dominante
+                emotion_max = max(emotion_dict, key=emotion_dict.get)
+                # Augmenter le compteur pour cette émotion
+                emotions_dominantes[emotion_max] += 1
+
+        # Retourner directement le Counter avec les fréquences des émotions
+        return emotions_dominantes, emotions_dominantes.most_common(1)[0][0]
+
+    return Counter({emotion: 0 for emotion in ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']}), "Aucune émotion"
 
 
 ### Ajout Variance
@@ -241,8 +252,9 @@ def analyser_video(video_url, start_time, end_time, repertoire_travail):
         emotion_dominante_mode_results.append({
             'Seconde': seconde,
             'Emotion_dominante_25fps_mode': emotion_dominante_mode,
-            **mode_emotions
+            **mode_emotions  # Ajoute toutes les émotions et leur fréquence
         })
+
 
     df_emotions = pd.DataFrame(results_1fps_25fps)
     st.write("#### Analyse des émotions image par image (1fps et 25fps)")

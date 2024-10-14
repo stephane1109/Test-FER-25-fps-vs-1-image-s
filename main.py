@@ -1,5 +1,5 @@
 ##########################################
-# Projet : FER - Facial-Emotion-Recognition
+# Projet : TEST - Facial-Emotion-Recognition - 25fps vs 1 fps - somme - moyenne - mode - variance
 # Auteur : Stéphane Meurisse
 # Contact : stephane.meurisse@example.com
 # Site Web : https://www.codeandcortex.fr

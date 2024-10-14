@@ -1,3 +1,12 @@
+##########################################
+# Projet : FER - Facial-Emotion-Recognition
+# Auteur : Stéphane Meurisse
+# Contact : stephane.meurisse@example.com
+# Site Web : https://www.codeandcortex.fr
+# LinkedIn : https://www.linkedin.com/in/st%C3%A9phane-meurisse-27339055/
+# Date : 14 octobre 2024
+##########################################
+
 # pip install streamlit
 # pip install opencv-python-headless fer pandas matplotlib altair xlsxwriter scikit-learn numpy
 # pip install tensorflow

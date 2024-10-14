@@ -4,6 +4,7 @@
 # pip install tensorflow-metal -> pour Mac M2
 # pip install yt_dlp
 # pip install vl-convert-python
+# FFmpeg -> attention sous Mac la procédure d'installation sous MAC nécessite "Homebrew"
 
 import streamlit as st
 import subprocess

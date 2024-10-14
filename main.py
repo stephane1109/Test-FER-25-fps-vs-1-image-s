@@ -16,6 +16,14 @@ import cv2
 from yt_dlp import YoutubeDL
 import altair as alt
 
+# Fonction pour vider le cache
+def vider_cache():
+    st.cache_data.clear()
+    st.write("Cache vidé systématiquement au lancement du script")
+
+# Appeler la fonction de vidage du cache au début du script
+vider_cache()
+
 # Fonction pour définir le répertoire de travail
 def definir_repertoire_travail():
     repertoire = st.text_input("Définir le répertoire de travail", "", key="repertoire_travail")
@@ -30,6 +38,15 @@ def definir_repertoire_travail():
     else:
         st.write(f"Le répertoire existe déjà : {repertoire}")
     return repertoire
+
+# Suppression des repertoires
+def supprimer_repertoires_images(repertoire_1fps, repertoire_25fps):
+    if os.path.exists(repertoire_1fps):
+        st.write("Suppression du répertoire d'images 1fps...")
+        subprocess.call(['rm', '-r', repertoire_1fps])
+    if os.path.exists(repertoire_25fps):
+        st.write("Suppression du répertoire d'images 25fps...")
+        subprocess.call(['rm', '-r', repertoire_25fps])
 
 # Fonction pour télécharger la vidéo avec yt-dlp
 def telecharger_video(url, repertoire):
@@ -77,6 +94,7 @@ def extraire_images_25fps_ffmpeg(video_path, repertoire, seconde):
     return images_extraites
 
 # Fonction d'analyse d'émotion et d'annotation d'une image
+
 def analyser_et_annoter_image(image_path, detector):
     if image_path is None:
         st.write(f"Aucune image extraite pour le chemin : {image_path}")
@@ -103,28 +121,58 @@ def analyser_et_annoter_image(image_path, detector):
 # Calcul de l'émotion dominante par moyenne des scores
 def emotion_dominante_par_moyenne(emotions_list):
     if emotions_list:
-        moyenne_emotions = {emotion: np.mean([emo[emotion] for emo in emotions_list])
-                            for emotion in emotions_list[0].keys()}
+        emotions = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']  # Liste des émotions à traiter
+        moyenne_emotions = {emotion: np.mean([emo.get(emotion, 0) for emo in emotions_list])  # Utilisation de .get
+                            for emotion in emotions}
         emotion_dominante = max(moyenne_emotions, key=moyenne_emotions.get)
         return moyenne_emotions, emotion_dominante
     return {}, "Aucune émotion"
 
+
 # Calcul de l'émotion dominante par somme des scores
 def emotion_dominante_par_somme(emotions_list):
     if emotions_list:
-        somme_emotions = {emotion: np.sum([emo[emotion] for emo in emotions_list])
-                          for emotion in emotions_list[0].keys()}
+        emotions = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']  # Liste des émotions à traiter
+        somme_emotions = {emotion: np.sum([emo.get(emotion, 0) for emo in emotions_list])  # Utilisation de .get
+                          for emotion in emotions}
         emotion_dominante = max(somme_emotions, key=somme_emotions.get)
         return somme_emotions, emotion_dominante
     return {}, "Aucune émotion"
 
+
 # Calcul de l'émotion dominante par mode (émotion la plus fréquente)
 def emotion_dominante_par_mode(emotions_list):
     if emotions_list:
-        emotions_dominantes = [max(emotion, key=emotion.get) for emotion in emotions_list]
-        emotion_dominante = Counter(emotions_dominantes).most_common(1)[0][0]
-        return Counter(emotions_dominantes), emotion_dominante
+        emotions_dominantes = [
+            max(emotion, key=emotion.get) for emotion in emotions_list if emotion  # Vérification si 'emotion' n'est pas vide
+        ]
+        if emotions_dominantes:  # Vérifier qu'il y a des émotions dominantes avant d'essayer de trouver le mode
+            emotion_dominante = Counter(emotions_dominantes).most_common(1)[0][0]
+            return Counter(emotions_dominantes), emotion_dominante
+        else:
+            return {}, "Aucune émotion dominante détectée"
     return {}, "Aucune émotion"
+
+
+### Ajout Variance
+# Ajout pour calculer la moyenne et la variance des probabilités de chaque émotion sur les 25 frames
+def moyenne_et_variance_par_emotion(emotions_25fps_list):
+    emotions = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
+    resultats = {}
+
+    # Calculer la moyenne et la variance pour chaque émotion
+    for emotion in emotions:
+        # Récupérer les scores de l'émotion sur les 25 frames
+        emotion_scores = [emotion_dict.get(emotion, 0) for emotion_dict in emotions_25fps_list]
+
+        # Calculer la moyenne et la variance
+        moyenne = np.mean(emotion_scores)
+        variance = np.var(emotion_scores)
+
+        resultats[emotion] = {'moyenne': moyenne, 'variance': variance}
+
+    return resultats
+### Fin Variance
 
 # Fonction principale pour gérer le processus
 def analyser_video(video_url, start_time, end_time, repertoire_travail):
@@ -132,6 +180,11 @@ def analyser_video(video_url, start_time, end_time, repertoire_travail):
 
     repertoire_1fps = os.path.join(repertoire_travail, "images_annotées_1s")
     repertoire_25fps = os.path.join(repertoire_travail, "images_annotées_25fps")
+
+    # Appel à la fonction de suppression des répertoires avant de recréer les images
+    supprimer_repertoires_images(repertoire_1fps, repertoire_25fps)
+
+    # Ensuite, recréer les répertoires vides
     os.makedirs(repertoire_1fps, exist_ok=True)
     os.makedirs(repertoire_25fps, exist_ok=True)
 
@@ -191,7 +244,7 @@ def analyser_video(video_url, start_time, end_time, repertoire_travail):
         })
 
     df_emotions = pd.DataFrame(results_1fps_25fps)
-    st.write("**Analyse des émotions image par image (1fps et 25fps)**")
+    st.write("#### Analyse des émotions image par image (1fps et 25fps)")
     st.dataframe(df_emotions)
 
     # Extraire la partie numérique de la frame pour le tri
@@ -222,7 +275,7 @@ def analyser_video(video_url, start_time, end_time, repertoire_travail):
         height=400
     )
 
-    st.write("**Streamgraph des émotions**")
+    st.write("#### Streamgraph des émotions")
     st.altair_chart(streamgraph, use_container_width=True)
 
     # Création du Line Chart avec Frame_Index sur l'axe des abscisses
@@ -237,7 +290,7 @@ def analyser_video(video_url, start_time, end_time, repertoire_travail):
         height=400
     )
 
-    st.write("**Line chart des émotions**")
+    st.write("#### Line chart des émotions")
     st.altair_chart(line_chart, use_container_width=True)
 
     # Sauvegarde du graph Streamgraph
@@ -249,33 +302,88 @@ def analyser_video(video_url, start_time, end_time, repertoire_travail):
     line_chart.save(os.path.join(repertoire_travail, 'linechart_emotions.html'))
 
     df_emotion_dominante_1fps = pd.DataFrame(emotion_dominante_1fps_results)
-    st.write("**Résultat de l'émotion - score le plus élevé pour 1fps**")
+    st.write("#### Résultat de l'émotion - score le plus élevé pour 1fps")
     st.dataframe(df_emotion_dominante_1fps)
 
     df_emotion_dominante_somme = pd.DataFrame(emotion_dominante_somme_results)
-    st.write("**Résultat de l'émotion dominante par somme (25fps)**")
+    st.write("#### Résultat de l'émotion dominante par somme (25fps)")
     st.dataframe(df_emotion_dominante_somme)
 
     df_emotion_dominante_moyenne = pd.DataFrame(emotion_dominante_moyenne_results)
-    st.write("**Résultat de l'émotion dominante par moyenne (25fps)**")
+    st.write("#### Résultat de l'émotion dominante par moyenne (25fps)")
     st.dataframe(df_emotion_dominante_moyenne)
 
     st.markdown("""
-    **Explication du calcul de la moyenne :**
+    #### Explication du calcul de la moyenne :
     - Pour chaque émotion, les scores sont additionnés sur toutes les 25 images extraites dans une seconde.
     - On calcule ensuite la moyenne de chaque émotion. Par exemple, si les scores pour l'émotion 'angry' sont : 
     0.3, 0.4, 0.5 sur 3 images, la moyenne sera (0.3 + 0.4 + 0.5) / 3.
     """)
 
     df_emotion_dominante_mode = pd.DataFrame(emotion_dominante_mode_results)
-    st.write("**Résultat de l'émotion dominante par mode (25fps)**")
+    st.write("#### Résultat de l'émotion dominante par mode (25fps)")
     st.dataframe(df_emotion_dominante_mode)
 
     st.markdown("""
-    **Explication du calcul du mode :**
+    #### Explication du calcul du mode :
     - Pour chaque image, l'émotion avec le score le plus élevé est déterminée.
     - Ensuite, l'émotion qui apparaît le plus souvent parmi ces 25 images est définie comme l'émotion dominante par mode.
     """)
+
+### Ajout Variance
+    # Vérifier que stats_par_emotion est bien généré à ce stade
+    stats_par_emotion = moyenne_et_variance_par_emotion(emotions_25fps_list)
+
+    # Vérifier si les données sont bien présentes
+    if stats_par_emotion:
+        # Convertir les résultats en DataFrame pour affichage
+        # On crée une DataFrame à partir des résultats de la fonction 'moyenne_et_variance_par_emotion'
+        df_stats = pd.DataFrame(stats_par_emotion).T.reset_index()  # T pour transposer les colonnes en lignes
+        df_stats.columns = ['Emotion', 'Moyenne', 'Variance']  # Assigner explicitement les noms des colonnes
+
+        # Afficher la DataFrame des moyennes et variances
+        st.write("#### Tableau des moyennes et variances des émotions sur les 25 frames")
+        st.dataframe(df_stats)
+
+        # Création du graphique combinant Moyenne et Variance
+        st.write("#### Graphique des moyennes et variances des émotions sur les 25 frames")
+
+        # Barres pour les moyennes
+        moyenne_bar = alt.Chart(df_stats).mark_bar().encode(
+            x=alt.X('Emotion:N', title='Émotion'),
+            y=alt.Y('Moyenne:Q', title='Moyenne des probabilités'),
+            color=alt.Color('Emotion:N', legend=None)
+        )
+
+        # Points pour les variances
+        variance_point = alt.Chart(df_stats).mark_circle(size=100, color='red').encode(
+            x=alt.X('Emotion:N', title='Émotion'),
+            y=alt.Y('Variance:Q', title='Variance des probabilités'),
+            tooltip=['Emotion', 'Variance']
+        )
+
+        # Superposer les deux graphiques
+        graphique_combine = alt.layer(moyenne_bar, variance_point).resolve_scale(
+            y='independent'  # Permet d'avoir des échelles indépendantes pour Moyenne et Variance
+        ).properties(
+            width=600,
+            height=400,
+        )
+
+        # Affichage du graphique
+        st.altair_chart(graphique_combine, use_container_width=True)
+    else:
+        st.write("Aucune donnée disponible pour les moyennes et variances.")
+
+    # Markdown sous le graphique
+    st.markdown("""
+    #### Interprétation de la variance et de la moyenne :
+    - **Variance** : Calculer la variance pour chaque émotion permet de voir quelle émotion fluctue le plus sur les 25 frames.
+    Une émotion avec une variance élevée signifie qu'elle varie fortement d'une frame à l'autre.
+    - **Moyenne** : Utiliser la variance combinée avec la moyenne donne une idée plus précise de la stabilité de chaque émotion. 
+    Une émotion qui a une **haute moyenne** et une **faible variance** serait un bon indicateur d'une émotion présente de manière stable et élevée sur toute la séquence.
+    """)
+### Fin Variance
 
     with pd.ExcelWriter(os.path.join(repertoire_travail, "resultats_emotions_complet.xlsx")) as writer:
         df_emotions.to_excel(writer, sheet_name="Emotions Image par Image", index=False)
@@ -301,8 +409,15 @@ start_time = st.number_input("Temps de départ de l'analyse (en secondes)", min_
 end_time = st.number_input("Temps d'arrivée de l'analyse (en secondes)", min_value=start_time, value=start_time + 1,
                            key="end_time")
 
+
+####
 if st.button("Lancer l'analyse"):
     if video_url and repertoire_travail:
+        # Vider le cache avant de lancer l'analyse
+        st.cache_data.clear()
+
+        # Lancer l'analyse après avoir vidé le cache
         analyser_video(video_url, start_time, end_time, repertoire_travail)
     else:
         st.write("Veuillez définir le répertoire de travail et l'URL de la vidéo.")
+####

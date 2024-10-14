@@ -418,7 +418,7 @@ def analyser_video(video_url, start_time, end_time, repertoire_travail):
 
 
 # Interface Streamlit
-st.title("Analyse des émotions : 1 fps vs 25 fps vs somme - moyenne - mode")
+st.title("Analyse des émotions : 1 fps vs 25 fps vs somme - moyenne - mode - variance")
 st.markdown("<h6 style='text-align: center;'>www.codeandcortex.fr</h5>", unsafe_allow_html=True)
 
 # Utilisation dans Streamlit
